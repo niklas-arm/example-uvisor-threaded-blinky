@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013-2016, ARM Limited, All Rights Reserved
+ * Copyright (c) 2016, ARM Limited, All Rights Reserved
  * SPDX-License-Identifier: Apache-2.0
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may
@@ -14,56 +14,109 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include "fun_bag.h"
+#include "led1.h"
 #include "uvisor-lib/uvisor-lib.h"
 #include "mbed.h"
 #include "rtos.h"
 #include "main-hw.h"
+#include <stdint.h>
 
 /* Create ACLs for main box. */
 MAIN_ACL(g_main_acl);
 
 
-/* Register privleged system IRQ hooks. */
-extern "C" void SVC_Handler(void);
-extern "C" void PendSV_Handler(void);
-extern "C" void SysTick_Handler(void);
+/* Register privleged system hooks. */
+UVISOR_EXTERN void SVC_Handler(void);
+UVISOR_EXTERN void PendSV_Handler(void);
+UVISOR_EXTERN void SysTick_Handler(void);
 
-UVISOR_SET_PRIV_SYS_IRQ_HOOKS(SVC_Handler, PendSV_Handler, SysTick_Handler);
+UVISOR_SET_PRIV_SYS_HOOKS(SVC_Handler, PendSV_Handler, SysTick_Handler, __uvisor_semaphore_post);
 
 /* Enable uVisor. */
 UVISOR_SET_MODE_ACL(UVISOR_ENABLED, g_main_acl);
 
-static void main_alloc(void)
+struct runner_context {
+    char id;
+    uint32_t delay_ms;
+};
+
+static void led1_async_runner(const void * ctx)
 {
-    const uint32_t kB = 1024;
-    uint16_t seed = 0x10;
-    SecureAllocator alloc = secure_allocator_create_with_pages(4*kB, 1*kB);
+    DigitalOut led1(LED1);
+    struct runner_context *rc = (struct runner_context *) ctx;
+
+    led1 = LED_OFF;
 
     while (1) {
-        alloc_fill_wait_verify_free(500, seed, 577);
-        specific_alloc_fill_wait_verify_free(alloc, 5*kB, seed, 97);
-        seed++;
+        uvisor_rpc_result_t result;
+        /* Call led1_display_secret asynchronously. */
+        result = led1_display_secret_async(0, 0);
+
+        // ...Do stuff asynchronously here...
+
+        /* Wait for a non-error result synchronously. */
+        while (1) {
+            int status;
+            /* TODO typesafe return codes */
+            uint32_t ret;
+            status = rpc_fncall_wait(result, UVISOR_WAIT_FOREVER, &ret);
+            if (!status) {
+                break;
+            }
+        }
+
+        putc(rc->id, stdout);
+        fflush(stdout);
+
+        led1 = !led1;
+        Thread::wait(rc->delay_ms);
+    }
+}
+
+static void led1_sync_runner(const void * ctx)
+{
+    DigitalOut led2(LED2);
+    struct runner_context *rc = (struct runner_context *) ctx;
+
+    led2 = LED_OFF;
+
+    while (1) {
+        led1_display_secret_sync(0, 0); /* This waits forever for a result. */
+
+        putc(rc->id, stdout);
+        fflush(stdout);
+
+        led2 = !led2;
+        Thread::wait(rc->delay_ms);
     }
 }
 
 int main(void)
 {
-    osStatus status;
-    Thread * thread = new Thread();
-    status = thread->start(main_alloc);
-    if (status != osOK) {
-        printf("Could not start main thread.\r\n");
-        uvisor_error(USER_NOT_ALLOWED);
-    }
-
     printf("\r\n***** threaded blinky uvisor-rtos example *****\r\n");
 
     size_t count = 0;
 
+    /* Setup runner contexts. */
+    struct runner_context run1 = {'A', 200};
+    struct runner_context run2 = {'B', 300};
+    struct runner_context run3 = {'C', 500};
+    struct runner_context run4 = {'X', 700};
+    struct runner_context run5 = {'Y', 1100};
+    struct runner_context run6 = {'Z', 1300};
+
+    /* Startup a few RPC runners. */
+    Thread sync_1(led1_sync_runner, &run1);
+    Thread sync_2(led1_sync_runner, &run2);
+    Thread sync_3(led1_sync_runner, &run3);
+    Thread async_1(led1_async_runner, &run4);
+    Thread async_2(led1_async_runner, &run5);
+    Thread async_3(led1_async_runner, &run6);
+
     while (1)
     {
-        printf("Main loop count: %d\r\n", count++);
+        /* Spin forever. */
+        ++count;
     }
 
     return 0;
