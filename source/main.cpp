@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013-2016, ARM Limited, All Rights Reserved
+ * Copyright (c) 2016, ARM Limited, All Rights Reserved
  * SPDX-License-Identifier: Apache-2.0
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may
@@ -14,7 +14,6 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include "fun_bag.h"
 #include "uvisor-lib/uvisor-lib.h"
 #include "mbed.h"
 #include "rtos.h"
@@ -34,30 +33,95 @@ UVISOR_SET_PRIV_SYS_IRQ_HOOKS(SVC_Handler, PendSV_Handler, SysTick_Handler);
 /* Enable uVisor. */
 UVISOR_SET_MODE_ACL(UVISOR_ENABLED, g_main_acl);
 
-static void main_alloc(const void *)
+struct runner_context {
+    char id;
+    uint32_t delay_ms;
+};
+
+static void led1_async_runner(const void * ctx)
 {
-    const uint32_t kB = 1024;
-    uint16_t seed = 0x10;
-    SecureAllocator alloc = secure_allocator_create_with_pages(4*kB, 1*kB);
+    struct runner_context *rc = (struct runner_context *) ctx;
 
     while (1) {
-        alloc_fill_wait_verify_free(500, seed, 577);
-        specific_alloc_fill_wait_verify_free(alloc, 5*kB, seed, 97);
-        seed++;
+        int status;
+        uvisor_rpc_result_t result;
+        rpc_init_result(&result);
+        /* Call led1_display_secret asynchronously. XXX We are using this silly
+         * wrapper instead of rpc_fncall_async directly because we don't know
+         * the destination queue ID from this caller perspective: only the
+         * wrapper implementer knows which queue to go to. */
+        extern void led1_display_secret_async(uvisor_rpc_result_t *);
+        led1_display_secret_async(&result);
+
+        /* Wait for a non-error result synchronously. */
+        while (1) {
+            /* TODO typesafe return codes */
+            uint32_t ret;
+            status = rpc_fncall_wait(&result, osWaitForever, &ret);
+            if (!status) {
+                break;
+            }
+        }
+
+        putc(rc->id, stdout);
+        fflush(stdout);
+        Thread::wait(rc->delay_ms);
+    }
+}
+
+UVISOR_EXTERN int sgw_led1_display_secret(void);
+
+static void led1_sgw_runner(const void * ctx)
+{
+    struct runner_context *rc = (struct runner_context *) ctx;
+
+    while (1) {
+        sgw_led1_display_secret(); /* This waits forever for a result. */
+
+        putc(rc->id, stdout);
+        fflush(stdout);
+        Thread::wait(rc->delay_ms);
+    }
+}
+
+static void led1_sync_runner(const void * ctx)
+{
+    struct runner_context *rc = (struct runner_context *) ctx;
+
+    while (1) {
+        extern int led1_display_secret_sync(void);
+        led1_display_secret_sync(); /* This waits forever for a result. */
+
+        putc(rc->id, stdout);
+        fflush(stdout);
+        Thread::wait(rc->delay_ms);
     }
 }
 
 int main(void)
 {
-    Thread * thread = new Thread(main_alloc);
-
     printf("\r\n***** threaded blinky uvisor-rtos example *****\r\n");
 
     size_t count = 0;
 
+    /* Setup runner contexts. */
+    struct runner_context run1 = {'A', 200};
+    struct runner_context run2 = {'B', 300};
+    struct runner_context run3 = {'C', 500};
+    struct runner_context run4 = {'G', 700};
+    struct runner_context run5 = {'S', 1100};
+
+    /* Startup a few async runners. */
+    Thread async_1(led1_async_runner, &run1);
+    Thread async_2(led1_async_runner, &run2);
+    Thread async_3(led1_async_runner, &run3);
+    Thread sgw_1(led1_sgw_runner, &run4);
+    Thread sync_1(led1_sync_runner, &run5);
+
     while (1)
     {
-        printf("Main loop count: %d\r\n", count++);
+        /* Spin forever. */
+        ++count;
     }
 
     return 0;
