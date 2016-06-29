@@ -1,4 +1,19 @@
-#include "fun_bag.h"
+/*
+ * Copyright (c) 2016, ARM Limited, All Rights Reserved
+ * SPDX-License-Identifier: Apache-2.0
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License"); you may
+ * not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+ * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 #include "uvisor-lib/uvisor-lib.h"
 #include "mbed.h"
 #include "rtos.h"
@@ -29,43 +44,27 @@ static int __led1_display_secret(uint32_t p0, uint32_t p1, uint32_t p2, uint32_t
     (void)p2;
     (void)p3;
 
-    printf("\tLED1 Secret 0x%08X\r\n", (unsigned int)uvisor_ctx->secret);
+    uvisor_ctx->secret = 2;
+    Thread::wait(uvisor_ctx->secret);
 
     return 0;
-}
-
-static void rpc_handler(const void *)
-{
-    /* TODO Make box init do this on behalf of the user. */
-    //UVISOR_BOX_RPC_INIT(box_led1);
-    box_led1_rpc_receive_q_id = osMailCreate(osMailQ(box_led1_rpc_receive_q), NULL);
-
-    while (1) {
-        //UVISOR_BOX_RPC_HANDLE(box_led1, 50);
-        rpc_fncall_waitfor(box_led1_rpc_receive_q_id, 50);
-    }
 }
 
 static void led1_main(const void *)
 {
     DigitalOut led1(LED1);
     led1 = LED_OFF;
-    const uint32_t kB = 1024;
 
-    SecureAllocator alloc = secure_allocator_create_with_pages(4*kB, 1*kB);
+    /* TODO Make box init do this on behalf of the user. */
+    //UVISOR_BOX_RPC_INIT(box_led1);
+    box_led1_rpc_receive_q_id = osMailCreate(osMailQ(box_led1_rpc_receive_q), NULL);
 
-    Thread rpc_runner(rpc_handler);
-
-    uvisor_ctx->secret = 0xBEEFCAFE;
 
     while (1) {
-        static const size_t size = 500;
-        uint16_t seed = (size << 8) | (uvisor_ctx->heartbeat & 0xFF);
-
+        uvisor_ctx->secret = 1;
         led1 = !led1;
         ++uvisor_ctx->heartbeat;
-        alloc_fill_wait_verify_free(size, seed, 211);
-        specific_alloc_fill_wait_verify_free(alloc, 5*kB, seed, 107);
+        rpc_fncall_waitfor(box_led1_rpc_receive_q_id, osWaitForever);
     }
 }
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013-2016, ARM Limited, All Rights Reserved
+ * Copyright (c) 2016, ARM Limited, All Rights Reserved
  * SPDX-License-Identifier: Apache-2.0
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may
@@ -14,7 +14,6 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include "fun_bag.h"
 #include "uvisor-lib/uvisor-lib.h"
 #include "mbed.h"
 #include "rtos.h"
@@ -34,54 +33,71 @@ UVISOR_SET_PRIV_SYS_IRQ_HOOKS(SVC_Handler, PendSV_Handler, SysTick_Handler);
 /* Enable uVisor. */
 UVISOR_SET_MODE_ACL(UVISOR_ENABLED, g_main_acl);
 
-static void main_alloc(const void *)
-{
-    const uint32_t kB = 1024;
-    uint16_t seed = 0x10;
-    SecureAllocator alloc = secure_allocator_create_with_pages(4*kB, 1*kB);
+struct runner_context {
+    char id;
+    uint32_t delay_ms;
+};
 
-    while (1) {
-        alloc_fill_wait_verify_free(500, seed, 577);
-        specific_alloc_fill_wait_verify_free(alloc, 5*kB, seed, 97);
-        seed++;
-    }
-}
-
-static void led1_async_runner(const void *)
+static void led1_async_runner(const void * ctx)
 {
     uvisor_rpc_result_t result;
+    struct runner_context *rc = (struct runner_context *) ctx;
 
     while (1) {
+        /* Call led1_display_secret_async asynchronously. */
         extern uvisor_rpc_result_t led1_display_secret_async(void);
         result = led1_display_secret_async();
 
-        /* Wait on the result with a timeout of 1000 ms. */
+        /* Wait for the result synchronously. */
         int ret;
-        rpc_fncall_wait(&result, 1000, &ret);
-        Thread::wait(500);
+        rpc_fncall_wait(&result, osWaitForever, &ret);
+
+        /* XXX It'd be nice if putc worked. */
+        //printf("%c", rc->id);
+        putc(rc->id, stdout);
+        fflush(stdout);
+        Thread::wait(rc->delay_ms);
+    }
+}
+
+static void led1_sync_runner(const void * ctx)
+{
+    struct runner_context *rc = (struct runner_context *) ctx;
+
+    while (1) {
+        /* Call led1_display_secret_async synchronously. */
+        extern int led1_display_secret(void);
+        led1_display_secret(); /* This waits forever for a result */
+
+        /* XXX It'd be nice if putc worked. */
+        //printf("%c", rc->id);
+        putc(rc->id, stdout);
+        fflush(stdout);
+        Thread::wait(rc->delay_ms);
     }
 }
 
 int main(void)
 {
-    Thread * thread = new Thread(main_alloc);
-
     printf("\r\n***** threaded blinky uvisor-rtos example *****\r\n");
 
     size_t count = 0;
 
-    /* Startup a few async runners */
-    Thread async_1(led1_async_runner);
-    Thread async_2(led1_async_runner);
-    Thread async_3(led1_async_runner);
+    /* Setup runner contexts. */
+    struct runner_context run1 = {'A', 200};
+    struct runner_context run2 = {'B', 300};
+    struct runner_context run3 = {'C', 500};
+    struct runner_context run4 = {'S', 700};
+
+    /* Startup a few async runners. */
+    Thread async_1(led1_async_runner, &run1);
+    Thread async_2(led1_async_runner, &run2);
+    Thread async_3(led1_async_runner, &run3);
+    Thread sync_1(led1_sync_runner, &run4);
 
     while (1)
     {
-        printf("Main loop count: %d\r\n", count++);
-
-        extern int led1_display_secret(void);
-        led1_display_secret();
-        Thread::wait(200);
+        /* Spin forever. */
     }
 
     return 0;
