@@ -43,18 +43,19 @@ static void led1_async_runner(const void * ctx)
     struct runner_context *rc = (struct runner_context *) ctx;
 
     while (1) {
-        int status;
         uvisor_rpc_result_t result;
         rpc_init_result(&result);
-        /* Call led1_display_secret asynchronously. XXX We are using this silly
-         * wrapper instead of rpc_fncall_async directly because we don't know
-         * the destination queue ID from this caller perspective: only the
-         * wrapper implementer knows which queue to go to. */
-        extern void led1_display_secret_async(uvisor_rpc_result_t *);
+        /* Call led1_display_secret asynchronously. */
+        extern int led1_display_secret_async(uvisor_rpc_result_t *);
         led1_display_secret_async(&result);
+        // Could use rpc_fncall_async(0, 1, 2, 3, led1_display_secret, result);
+        // but would lose type safety
+
+        // ...Do stuff asynchronously here...
 
         /* Wait for a non-error result synchronously. */
         while (1) {
+            int status;
             /* TODO typesafe return codes */
             uint32_t ret;
             status = rpc_fncall_wait(&result, osWaitForever, &ret);
@@ -76,7 +77,7 @@ static void led1_sgw_runner(const void * ctx)
     struct runner_context *rc = (struct runner_context *) ctx;
 
     while (1) {
-        sgw_led1_display_secret(); /* This waits forever for a result. */
+        sgw_led1_display_secret(); /* This waits forever for a result. Probably need async version. */
 
         putc(rc->id, stdout);
         fflush(stdout);
