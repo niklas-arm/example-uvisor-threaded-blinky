@@ -29,15 +29,17 @@ static const UvisorBoxAclItem acl[] = {
 };
 
 static void led1_main(const void *);
-UVISOR_EXTERN int led1_display_secret(uint32_t p0, uint32_t p1);
+static int _led1_display_secret(uint32_t a, uint32_t b);
 
 UVISOR_BOX_NAMESPACE(NULL);
 UVISOR_BOX_HEAPSIZE(8192);
 UVISOR_BOX_MAIN(led1_main, osPriorityNormal, UVISOR_BOX_STACK_SIZE);
 UVISOR_BOX_CONFIG(box_led1, acl, UVISOR_BOX_STACK_SIZE, box_context);
 
-UVISOR_BOX_RPC_GATEWAY(box_led1, led1_display_secret, int, uint32_t, uint32_t);
-UVISOR_EXTERN int led1_display_secret(uint32_t a, uint32_t b)
+UVISOR_BOX_RPC_GATEWAY_SYNC(box_led1, led1_display_secret_sync, _led1_display_secret, int, uint32_t, uint32_t);
+UVISOR_BOX_RPC_GATEWAY_ASYNC(box_led1, led1_display_secret_async, _led1_display_secret, int, uint32_t, uint32_t);
+
+static int _led1_display_secret(uint32_t a, uint32_t b)
 {
     uvisor_ctx->secret = 2;
     Thread::wait(uvisor_ctx->secret);
@@ -59,7 +61,7 @@ static void led1_main(const void *)
 
     /* The list of functions we are interested in handling RPC requests for */
     const TFN_Ptr my_fn_array[] = {
-        (TFN_Ptr) led1_display_secret,
+        (TFN_Ptr) _led1_display_secret,
     };
 
     status = rpc_init_callee_queue(queue, pool, pool_size, max_num_incoming_rpc, my_fn_array, ARRAY_COUNT(my_fn_array));
@@ -74,19 +76,4 @@ static void led1_main(const void *)
         ++uvisor_ctx->heartbeat;
         rpc_fncall_waitfor(queue, osWaitForever);
     }
-}
-
-/* Note: This is global so that rpc callers can know the symbol. We do the RPC
- * ourselved, because we know the destination queue and the caller doesn't.
- * This runs in the context of the caller box. */
-int led1_display_secret_sync(void)
-{
-    TFN_Ptr fp = (TFN_Ptr) led1_display_secret;
-    return rpc_fncall(0, 1, 2, 3, fp);
-}
-
-int led1_display_secret_async(uvisor_rpc_result_t * result)
-{
-    TFN_Ptr fp = (TFN_Ptr) led1_display_secret;
-    return rpc_fncall_async(0, 1, 2, 3, fp, result);
 }

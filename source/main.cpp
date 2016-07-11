@@ -14,10 +14,12 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+#include "led1.h"
 #include "uvisor-lib/uvisor-lib.h"
 #include "mbed.h"
 #include "rtos.h"
 #include "main-hw.h"
+#include <stdint.h>
 
 /* Create ACLs for main box. */
 MAIN_ACL(g_main_acl);
@@ -49,8 +51,7 @@ static void led1_async_runner(const void * ctx)
         uvisor_rpc_result_t result;
         rpc_init_result(&result);
         /* Call led1_display_secret asynchronously. */
-        extern int led1_display_secret_async(uvisor_rpc_result_t *);
-        led1_display_secret_async(&result);
+        led1_display_secret_async(&result, 0, 0);
         // Could use rpc_fncall_async(0, 1, 2, 3, led1_display_secret, result);
         // but would lose type safety
 
@@ -75,9 +76,7 @@ static void led1_async_runner(const void * ctx)
     }
 }
 
-UVISOR_EXTERN int sgw_led1_display_secret(void);
-
-static void led1_sgw_runner(const void * ctx)
+static void led1_sync_runner(const void * ctx)
 {
     DigitalOut led2(LED2);
     struct runner_context *rc = (struct runner_context *) ctx;
@@ -85,31 +84,12 @@ static void led1_sgw_runner(const void * ctx)
     led2 = LED_OFF;
 
     while (1) {
-        sgw_led1_display_secret(); /* This waits forever for a result. Probably need async version. */
+        led1_display_secret_sync(0, 0); /* This waits forever for a result. */
 
         putc(rc->id, stdout);
         fflush(stdout);
 
         led2 = !led2;
-        Thread::wait(rc->delay_ms);
-    }
-}
-
-static void led1_sync_runner(const void * ctx)
-{
-    DigitalOut led3(LED3);
-    struct runner_context *rc = (struct runner_context *) ctx;
-
-    led3 = LED_OFF;
-
-    while (1) {
-        extern int led1_display_secret_sync(void);
-        led1_display_secret_sync(); /* This waits forever for a result. */
-
-        putc(rc->id, stdout);
-        fflush(stdout);
-
-        led3 = !led3;
         Thread::wait(rc->delay_ms);
     }
 }
@@ -124,15 +104,17 @@ int main(void)
     struct runner_context run1 = {'A', 200};
     struct runner_context run2 = {'B', 300};
     struct runner_context run3 = {'C', 500};
-    struct runner_context run4 = {'G', 700};
-    struct runner_context run5 = {'S', 1100};
+    struct runner_context run4 = {'X', 700};
+    struct runner_context run5 = {'Y', 1100};
+    struct runner_context run6 = {'Z', 1300};
 
     /* Startup a few async runners. */
     Thread async_1(led1_async_runner, &run1);
     Thread async_2(led1_async_runner, &run2);
     Thread async_3(led1_async_runner, &run3);
-    Thread sgw_1(led1_sgw_runner, &run4);
-    Thread sync_1(led1_sync_runner, &run5);
+    Thread sync_1(led1_sync_runner, &run4);
+    Thread sync_2(led1_sync_runner, &run5);
+    Thread sync_3(led1_sync_runner, &run6);
 
     while (1)
     {
