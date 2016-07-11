@@ -40,7 +40,10 @@ struct runner_context {
 
 static void led1_async_runner(const void * ctx)
 {
+    DigitalOut led1(LED1);
     struct runner_context *rc = (struct runner_context *) ctx;
+
+    led1 = LED_OFF;
 
     while (1) {
         uvisor_rpc_result_t result;
@@ -66,6 +69,8 @@ static void led1_async_runner(const void * ctx)
 
         putc(rc->id, stdout);
         fflush(stdout);
+
+        led1 = !led1;
         Thread::wait(rc->delay_ms);
     }
 }
@@ -74,20 +79,28 @@ UVISOR_EXTERN int sgw_led1_display_secret(void);
 
 static void led1_sgw_runner(const void * ctx)
 {
+    DigitalOut led2(LED2);
     struct runner_context *rc = (struct runner_context *) ctx;
+
+    led2 = LED_OFF;
 
     while (1) {
         sgw_led1_display_secret(); /* This waits forever for a result. Probably need async version. */
 
         putc(rc->id, stdout);
         fflush(stdout);
+
+        led2 = !led2;
         Thread::wait(rc->delay_ms);
     }
 }
 
 static void led1_sync_runner(const void * ctx)
 {
+    DigitalOut led3(LED3);
     struct runner_context *rc = (struct runner_context *) ctx;
+
+    led3 = LED_OFF;
 
     while (1) {
         extern int led1_display_secret_sync(void);
@@ -95,6 +108,8 @@ static void led1_sync_runner(const void * ctx)
 
         putc(rc->id, stdout);
         fflush(stdout);
+
+        led3 = !led3;
         Thread::wait(rc->delay_ms);
     }
 }

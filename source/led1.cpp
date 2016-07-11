@@ -47,9 +47,7 @@ UVISOR_EXTERN int led1_display_secret(uint32_t a, uint32_t b)
 
 static void led1_main(const void *)
 {
-    DigitalOut led1(LED1);
     int status;
-    led1 = LED_OFF;
 
     /* Allocate a buffer for receiving RPC messages */
     static const size_t max_num_incoming_rpc = 10;
@@ -73,7 +71,6 @@ static void led1_main(const void *)
 
     while (1) {
         uvisor_ctx->secret = 1;
-        led1 = !led1;
         ++uvisor_ctx->heartbeat;
         rpc_fncall_waitfor(queue, osWaitForever);
     }
