@@ -19,6 +19,14 @@ UVISOR_BOX_HEAPSIZE(8192);
 UVISOR_BOX_MAIN(led1_main, osPriorityNormal, UVISOR_BOX_STACK_SIZE);
 UVISOR_BOX_CONFIG(box_led1, acl, UVISOR_BOX_STACK_SIZE, box_context);
 
+
+static int _led1_display_secret(uint32_t a, uint32_t b)
+{
+    return a + b;
+}
+UVISOR_BOX_RPC_GATEWAY_SYNC(box_led1, led1_display_secret_sync, _led1_display_secret, int, uint32_t, uint32_t);
+UVISOR_BOX_RPC_GATEWAY_ASYNC(box_led1, led1_display_secret_async, _led1_display_secret, int, uint32_t, uint32_t);
+
 static void led1_main(const void *)
 {
     DigitalOut led1(LED1);
@@ -26,6 +34,15 @@ static void led1_main(const void *)
     const uint32_t kB = 1024;
 
     SecureAllocator alloc = secure_allocator_create_with_pages(4*kB, 1*kB);
+
+    //uvisor_rpc_result_t result;
+    //led1_display_secret_sync(2, 3); /* calling here doesn't work. because same CU.
+    //This CU understands the gateway as a function pointer and we can't
+    //override that. When we attempt to call the gateway, we incorrectly dereference the
+    //first instruction in the gateway and try calling that. Ideally, we could
+    //alias a function with data, but we can't, so we have to deal with this
+    //(inside or outside the CU) crap. */
+    //led1_display_secret_async(&result, 5, 7);
 
     while (1) {
         static const size_t size = 500;

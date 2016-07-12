@@ -47,11 +47,28 @@ static void main_alloc(const void *)
     }
 }
 
+/* Extern'd as a function, not as a function pointer. This is so we don't
+ * dereference the gateway and try jumping to the value of the first
+ * instruction in the gateway. We could extern as function pointer if we want,
+ * but this would make the gateway not look exactly like a function call from
+ * the outside. It also take an extra dereference to do the call.
+ * So, to save this extra dereference, we give up being able to call the
+ * gateways from within the compilation unit they are called within.
+ * */
+extern "C" int led1_display_secret_sync(uint32_t a, uint32_t b);
+extern "C" int led1_display_secret_async(uvisor_rpc_result_t *, uint32_t a, uint32_t b);
+//extern "C" int (*led1_display_secret_sync)(uint32_t a, uint32_t b);
+//extern "C" int (*led1_display_secret_async)(uvisor_rpc_result_t *, uint32_t a, uint32_t b);
+
 int main(void)
 {
     Thread * thread = new Thread(main_alloc);
 
     printf("\r\n***** threaded blinky uvisor-rtos example *****\r\n");
+
+    uvisor_rpc_result_t result;
+    led1_display_secret_sync(2, 3);
+    led1_display_secret_async(&result, 5, 7);
 
     size_t count = 0;
 
