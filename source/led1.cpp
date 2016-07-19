@@ -35,14 +35,19 @@ static void led1_main(const void *)
 
     SecureAllocator alloc = secure_allocator_create_with_pages(4*kB, 1*kB);
 
-    //uvisor_rpc_result_t result;
+    uvisor_rpc_result_t result;
     //led1_display_secret_sync(2, 3); /* calling here doesn't work. because same CU.
     //This CU understands the gateway as a function pointer and we can't
     //override that. When we attempt to call the gateway, we incorrectly dereference the
     //first instruction in the gateway and try calling that. Ideally, we could
     //alias a function with data, but we can't, so we have to deal with this
     //(inside or outside the CU) crap. */
-    //led1_display_secret_async(&result, 5, 7);
+    //led1_display_secret_async(result, 5, 7);
+    led1_display_secret_sync(5, 7);
+    result = led1_display_secret_async(5, 7);
+    printf("result: %lu\n", result);
+
+    //led1_display_secret_sync_fp(2, 3); /* calling here through fp */
 
     while (1) {
         static const size_t size = 500;

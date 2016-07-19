@@ -55,10 +55,10 @@ static void main_alloc(const void *)
  * So, to save this extra dereference, we give up being able to call the
  * gateways from within the compilation unit they are called within.
  * */
-extern "C" int led1_display_secret_sync(uint32_t a, uint32_t b);
-extern "C" int led1_display_secret_async(uvisor_rpc_result_t *, uint32_t a, uint32_t b);
-//extern "C" int (*led1_display_secret_sync)(uint32_t a, uint32_t b);
-//extern "C" int (*led1_display_secret_async)(uvisor_rpc_result_t *, uint32_t a, uint32_t b);
+extern "C" int (*led1_display_secret_sync)(uint32_t a, uint32_t b);
+extern "C" uvisor_rpc_result_t (*led1_display_secret_async)(uint32_t a, uint32_t b);
+extern "C" int (*led1_display_secret_sync_mangle)(uint32_t a, uint32_t b);
+extern "C" uvisor_rpc_result_t (*led1_display_secret_async_mangle)(uint32_t a, uint32_t b);
 
 int main(void)
 {
@@ -68,7 +68,9 @@ int main(void)
 
     uvisor_rpc_result_t result;
     led1_display_secret_sync(2, 3);
-    led1_display_secret_async(&result, 5, 7);
+    result = led1_display_secret_async(5, 7);
+
+    printf("result: %lu\n", result);
 
     size_t count = 0;
 
