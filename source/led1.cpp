@@ -21,6 +21,8 @@
 
 #define ARRAY_COUNT(x) (sizeof(x) / sizeof(*x))
 
+uint32_t box1_count;
+
 struct box_context {
     Thread * thread;
     uint32_t heartbeat;
@@ -47,6 +49,7 @@ UVISOR_BOX_RPC_GATEWAY_ASYNC(box_led1, led1_display_secret_async, led1_display_s
 static int led1_display_secret(uint32_t a, uint32_t b)
 {
     ++uvisor_ctx->secret;
+    ++box1_count;
 
     return uvisor_ctx->secret;
 }
@@ -54,6 +57,7 @@ static int led1_display_secret(uint32_t a, uint32_t b)
 static void led1_main(const void *)
 {
     uvisor_ctx->secret = 0;
+    box1_count = 0;
 
     /* The list of functions we are interested in handling RPC requests for */
     const TFN_Ptr my_fn_array[] = {

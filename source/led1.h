@@ -20,6 +20,8 @@
 #include "uvisor-lib/uvisor-lib.h"
 #include <stdint.h>
 
+extern uint32_t box1_count;
+
 UVISOR_EXTERN int (*led1_display_secret_sync)(uint32_t a, uint32_t b);
 UVISOR_EXTERN uvisor_rpc_result_t (*led1_display_secret_async)(uint32_t a, uint32_t b);
 

@@ -20,6 +20,7 @@
 #include "rtos.h"
 #include "main-hw.h"
 #include <stdint.h>
+#include <assert.h>
 
 /* Create ACLs for main box. */
 MAIN_ACL(g_main_acl);
@@ -39,6 +40,25 @@ struct runner_context {
     char id;
     uint32_t delay_ms;
 };
+
+static void test_double_wait_fails(void)
+{
+    uvisor_rpc_result_t result;
+    /* Call led1_display_secret asynchronously. */
+    result = led1_display_secret_async(0, 0);
+
+    int status;
+    uint32_t ret;
+    status = rpc_fncall_wait(result, UVISOR_WAIT_FOREVER, &ret);
+
+    assert(box1_count == 1);
+    assert(status == 0);
+
+    status = rpc_fncall_wait(result, UVISOR_WAIT_FOREVER, &ret);
+
+    assert(box1_count == 1);
+    assert(status == -1);
+}
 
 static void led1_async_runner(const void * ctx)
 {
@@ -96,6 +116,9 @@ int main(void)
     printf("\r\n***** threaded blinky uvisor-rtos example *****\r\n");
 
     size_t count = 0;
+
+    /* Run some tests before stressing. */
+    test_double_wait_fails();
 
     /* Setup runner contexts. */
     struct runner_context run1 = {'A', 200};
