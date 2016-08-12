@@ -1,9 +1,22 @@
-# Threaded Blinky with uVisor Example
+# Threaded RPC with uVisor Example
 
-This is a simple example to show how to write a uVisor-secured threaded
-application. Three LEDs will blink from three separate secure processes. Each
-process also updates some memory private to that process. The memory allocator
-is also used in this example.
+This is a simple example to show how to use several uVisor APIs to build a box that securely stores a number.
+This number can only be written by one box, but read by all boxes.
+
+- Create and run secure boxes.
+- Secure static and dynamic memory inside secure boxes.
+- Run threads inside secure boxes.
+- Issue RPC requests to other secure boxes and wait for their completion.
+- Receive and process incoming RPC requests from other secure boxes.
+- Get box id and namespace of the RPC caller.
+
+This demo contains three secure boxes:
+
+1. The secure number vault. This box stores one number that can only be written to by client A, but read by everyone.
+2. Client A, which attempts to write (and succeeds) and read the secure number.
+3. Client B, which attempts to write (but fails) and read the secure number.
+
+The insecure box 0 also attempts to write (but fails) and read the secure number.
 
 ## Building
 

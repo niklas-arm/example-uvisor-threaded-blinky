@@ -19,86 +19,71 @@
 #include "rtos.h"
 #include "main-hw.h"
 #include "secure_number.h"
-#include <stdint.h>
-#include <assert.h>
 
-/* Create ACLs for main box. */
-MAIN_ACL(g_main_acl);
+struct box_context {
+    uint32_t number;
+};
 
-/* Register privleged system hooks. */
-UVISOR_EXTERN void SVC_Handler(void);
-UVISOR_EXTERN void PendSV_Handler(void);
-UVISOR_EXTERN void SysTick_Handler(void);
+static const UvisorBoxAclItem acl[] = {
+};
 
-UVISOR_SET_PRIV_SYS_HOOKS(SVC_Handler, PendSV_Handler, SysTick_Handler, __uvisor_semaphore_post);
+static void box_main(const void *);
 
-/* Enable uVisor. */
-UVISOR_SET_MODE_ACL(UVISOR_ENABLED, g_main_acl);
-
-DigitalOut led_red(LED1);
-DigitalOut led_green(LED2);
-DigitalOut led_blue(LED3);
+/* Box configuration */
+UVISOR_BOX_NAMESPACE("client_a");
+UVISOR_BOX_HEAPSIZE(8192);
+UVISOR_BOX_MAIN(box_main, osPriorityNormal, UVISOR_BOX_STACK_SIZE);
+UVISOR_BOX_RPC_MAX_INCOMING(8);
+UVISOR_BOX_CONFIG(secure_number_client_a, acl, UVISOR_BOX_STACK_SIZE, box_context);
 
 static uint32_t get_a_number()
 {
-    static uint32_t number = 425;
-    return (number -= 500UL);
+    return (uvisor_ctx->number -= 500UL);
 }
 
-static void main_async_runner(const void *)
+static void box_async_runner(const void *)
 {
     while (1) {
         uvisor_rpc_result_t result;
         const uint32_t number = get_a_number();
         result = secure_number_set_number(number);
 
-        // ...Do stuff asynchronously here...
+        /* Simulating some workload here. */
+        Thread::wait(10);
 
         /* Wait for a non-error result synchronously. */
         while (1) {
-            int status;
-            /* TODO typesafe return codes */
             uint32_t ret;
-            status = rpc_fncall_wait(result, UVISOR_WAIT_FOREVER, &ret);
+            int status = rpc_fncall_wait(result, UVISOR_WAIT_FOREVER, &ret);
             printf("%c: %s '0x%08x'\n", (char) uvisor_box_id_self() + '0', (ret == 0) ? "Wrote" : "Failed to write", (unsigned int) number);
             if (!status) {
                 break;
             }
         }
 
-        Thread::wait(13000);
+        Thread::wait(5000);
     }
 }
 
-static void main_sync_runner(const void *)
+static void box_sync_runner(const void *)
 {
     while (1) {
         /* Synchronous access to the number. */
         const uint32_t number = secure_number_get_number();
         printf("%c: Read '0x%08x'\n", (char) uvisor_box_id_self() + '0', (unsigned int) number);
 
-        Thread::wait(11000);
+        Thread::wait(7000);
     }
 }
 
-int main(void)
+void box_main(const void *)
 {
-    printf("\r\n***** threaded blinky uvisor-rtos example *****\r\n");
-    led_red = LED_OFF;
-    led_blue = LED_OFF;
-    led_green = LED_OFF;
-
-    /* Startup a few RPC runners. */
-    Thread sync(main_sync_runner, NULL);
-    Thread async(main_async_runner, NULL);
-
-    size_t count = 0;
+    /* Start two thread that . */
+    Thread sync(box_sync_runner, NULL);
+    Thread async(box_async_runner, NULL);
 
     while (1)
     {
         /* Spin forever. */
-        ++count;
     }
-
-    return 0;
 }

@@ -14,15 +14,15 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#ifndef LED1_H
-#define LED1_H
+#ifndef SECURE_NUMBER_H
+#define SECURE_NUMBER_H
 
 #include "uvisor-lib/uvisor-lib.h"
 #include <stdint.h>
 
-extern uint32_t box1_count;
 
-UVISOR_EXTERN int (*led1_display_secret_sync)(uint32_t a, uint32_t b);
-UVISOR_EXTERN uvisor_rpc_result_t (*led1_display_secret_async)(uint32_t a, uint32_t b);
+UVISOR_EXTERN uint32_t (*secure_number_get_number)(void);
 
-#endif
+UVISOR_EXTERN uvisor_rpc_result_t (*secure_number_set_number)(uint32_t number);
+
+#endif  /* SECURE_NUMBER_H */

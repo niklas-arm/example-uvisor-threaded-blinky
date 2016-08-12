@@ -20,8 +20,8 @@
 /* The vector containing the challenge is shared with the push-button ISR, so
  * that it can attempt to access it from an IRQ context. */
 
-#define LED_ON  true
-#define LED_OFF false
+#define LED_ON  false
+#define LED_OFF true
 
 #define MAIN_LED LED_BLUE
 #define HALT_LED LED_RED
@@ -47,5 +47,9 @@
         {I2C0,   sizeof(*I2C0),   UVISOR_TACLDEF_PERIPH}, \
         {SPI0,   sizeof(*SPI0),   UVISOR_TACLDEF_PERIPH}, \
     }
+
+extern DigitalOut led_red;
+extern DigitalOut led_green;
+extern DigitalOut led_blue;
 
 #endif /* __UVISOR_HELLOWORLD_MAIN_HW_H__ */
