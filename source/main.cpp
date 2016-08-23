@@ -42,7 +42,7 @@ DigitalOut led_blue(LED3);
 static uint32_t get_a_number()
 {
     static uint32_t number = 425;
-    return (number -= 500UL);
+    return (number -= 400UL);
 }
 
 static void main_async_runner(const void *)

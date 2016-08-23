@@ -76,7 +76,8 @@ static int set_number(uint32_t number)
         memset(name, 0, sizeof(name));
         uvisor_box_namespace(id, name, sizeof(name));
         /* We only trust client a. */
-        if (memcmp(name, "client_a", sizeof("client_a")) == 0) {
+        static const char * trusted_namespace = "client_a";
+        if (memcmp(name, trusted_namespace, sizeof(*trusted_namespace)) == 0) {
             uvisor_ctx->trusted_id = id;
             printf("Trusted client a has box id %u\n", id);
         } else {

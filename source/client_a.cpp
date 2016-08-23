@@ -38,6 +38,7 @@ UVISOR_BOX_CONFIG(secure_number_client_a, acl, UVISOR_BOX_STACK_SIZE, box_contex
 
 static uint32_t get_a_number()
 {
+    /* Such random. Many secure. Much bits. Wow. */
     return (uvisor_ctx->number -= 500UL);
 }
 
@@ -56,6 +57,7 @@ static void box_async_runner(const void *)
             uint32_t ret;
             int status = rpc_fncall_wait(result, UVISOR_WAIT_FOREVER, &ret);
             printf("%c: %s '0x%08x'\n", (char) uvisor_box_id_self() + '0', (ret == 0) ? "Wrote" : "Failed to write", (unsigned int) number);
+            /* FIXME: Add better error handling. */
             if (!status) {
                 break;
             }
@@ -78,12 +80,7 @@ static void box_sync_runner(const void *)
 
 void box_main(const void *)
 {
-    /* Start two thread that . */
-    Thread sync(box_sync_runner, NULL);
-    Thread async(box_async_runner, NULL);
-
-    while (1)
-    {
-        /* Spin forever. */
-    }
+    srand(uvisor_box_id_self());
+    new Thread(box_sync_runner, NULL);
+    new Thread(box_async_runner, NULL);
 }

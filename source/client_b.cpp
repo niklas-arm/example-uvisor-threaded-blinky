@@ -39,8 +39,8 @@ UVISOR_BOX_CONFIG(secure_number_client_b, acl, UVISOR_BOX_STACK_SIZE, box_contex
 
 static uint32_t get_a_number()
 {
-    /* Much bits. Such random. Wow. */
-    return (uvisor_ctx->number -= 500UL);
+    /* Such random. Many secure. Much bits. Wow. */
+    return (uvisor_ctx->number -= 300UL);
 }
 
 void box_main(const void *)
